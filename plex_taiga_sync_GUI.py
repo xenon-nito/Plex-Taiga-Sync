@@ -60,7 +60,15 @@ PIPE_NAME = config.get("PIPE_NAME", r'\\.\pipe\mpvsocket')  # can be overridden
 required = [PLEX_URL, PLEX_TOKEN, USERNAME, LIBRARY_NAMES, MPV_PATH]
 if not all(required):
     raise ValueError("Missing required config values. Please fill config.json (PLEX_URL, PLEX_TOKEN, USERNAME, LIBRARY_NAMES, MPV_PATH).")
-
+try:
+    # Validate MPV_PATH
+    if not os.path.isabs(MPV_PATH) or not os.path.exists(MPV_PATH):
+        raise ValueError(f"MPV_PATH in config.json is invalid or not found: {MPV_PATH!r}")
+except Exception as e:
+    print(f"❌ Configuration Error: {e}")
+    input("\nPress Enter to exit...")
+    sys.exit(1)
+    
 # ---------- Logging ----------
 logging.basicConfig(format='[%(asctime)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
 logger = logging.getLogger("plex-taiga-sync")
