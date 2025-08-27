@@ -12,6 +12,7 @@ Full final script:
 """
 
 import os
+import sys
 import re
 import json
 import time
@@ -68,7 +69,6 @@ except Exception as e:
     print(f"❌ Configuration Error: {e}")
     input("\nPress Enter to exit...")
     sys.exit(1)
-    
 # ---------- Logging ----------
 logging.basicConfig(format='[%(asctime)s] %(message)s', datefmt='%H:%M:%S', level=logging.INFO)
 logger = logging.getLogger("plex-taiga-sync")
@@ -576,10 +576,28 @@ def sync_loop():
                 # show metadata in right panel if available in cache or fetch new
                 # prefer guid cache
                 cached_meta = None
-                if guid and f"guid:{guid}" in matches_cache:
-                    cached_meta = matches_cache[f"guid:{guid}"].get("meta")
-                elif f"title:{clean_title(title)}" in matches_cache:
-                    cached_meta = matches_cache[f"title:{clean_title(title)}"].get("meta")
+                guid_key = f"guid:{guid}" if guid else None
+                title_key = f"title:{clean_title(title)}"
+
+                # guid cache lookup
+                if guid_key and guid_key in matches_cache:
+                    entry = matches_cache[guid_key]
+                    if isinstance(entry, dict):
+                        cached_meta = entry.get("meta")
+                    else:
+                        gui_log(f"⚠ Corrupted cache entry for {guid_key}, expected dict but got {type(entry).__name__}. Resetting.")
+                        matches_cache.pop(guid_key, None)
+                        save_cache(matches_cache)
+
+                # title cache lookup (only if guid didn’t yield valid meta)
+                if not cached_meta and title_key in matches_cache:
+                    entry = matches_cache[title_key]
+                    if isinstance(entry, dict):
+                        cached_meta = entry.get("meta")
+                    else:
+                        gui_log(f"⚠ Corrupted cache entry for {title_key}, expected dict but got {type(entry).__name__}. Resetting.")
+                        matches_cache.pop(title_key, None)
+                        save_cache(matches_cache)
 
                 if cached_meta:
                     update_info_panel_from_meta(cached_meta)
